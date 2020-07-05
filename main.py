@@ -35,15 +35,23 @@ if __name__ == "__main__":
     #print_data(basket[0], '5year') #weekly
 
     #print(r.get_quotes(basket))
+    #print(r.account.build_holdings())
+    #print(r.account.build_user_profile())
+
+    # --- workflow 1 ---
 
     # getting data
     data = r.get_historicals(basket[1], span='year')
     df = pd.DataFrame(data)
+    #print("df.head", df.head(), "\n")
+    #print("columns", df.columns)
+    
     # adding indicators
     from indicators import add_moving_average, add_RSI
     add_moving_average(df, 200)
     add_moving_average(df, 10)
     add_RSI(df, 2)
+
     # creating a model
     from models import Mean_Reversion
     strat = Mean_Reversion('MR', 200, 10, 2)
@@ -53,5 +61,27 @@ if __name__ == "__main__":
     print(strat.buy_signal(df))
     print("\nsell signal:")
     print(strat.sell_signal(df),'\n')
+
+    # --- workflow 2 ---
+
+    # set watchlist
+    # build world
+    # get model
+    # build investor
+    # livetrade with investor
+
+    # --- workflow 3 ---
+
+    # set watchlist
+    # build universe
+    # get model
+    # build investor
+    # backtest with investor + universe
+
+    # --- workflow 4 ---
+
+    # neural network model class
+
+
 
     r.logout()

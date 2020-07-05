@@ -1,7 +1,7 @@
 import pandas as pd
 
 class Model:
-    def __init__(self, name, input_checker, buy_signal, sell_signal):
+    def __init__(self, name, input_checker, buy_signal, sell_signal, rows_needed):
         '''
         input_checker takes a dataframe representing the available data, 
         and returns true if the data is the correct shape/size, false otherwise
@@ -12,6 +12,7 @@ class Model:
         self.check_input = input_checker
         self.buy_signal = buy_signal
         self.sell_signal = sell_signal
+        self.rows_needed = rows_needed
 
 
 class Mean_Reversion(Model):
@@ -26,6 +27,7 @@ class Mean_Reversion(Model):
         self.n_short_ma = n_for_short_ma
         self.n_RSI = n_for_RSI
         self.expected_columns = [str(self.n_long_ma)+'_period_ma', str(self.n_short_ma)+'_period_ma', str(self.n_RSI)+'_period_RSI']
+        self.rows_needed = 2
 
         def check_input(df):
             cols = df.columns
@@ -48,3 +50,6 @@ class Mean_Reversion(Model):
         self.check_input = check_input
         self.buy_signal = buy_signal
         self.sell_signal = sell_signal
+
+    def save(self):
+        return
