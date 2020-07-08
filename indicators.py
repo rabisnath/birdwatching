@@ -1,10 +1,13 @@
 import pandas as pd
 
-def add_moving_average(df, n, use_price='close_price'):
+def add_moving_average(df, **kwargs):
     '''
     adds a new column to df called 'n_period_ma' with the moving 
     average of the column $use_price over n data points
     '''
+    n = kwargs.pop('n', 20)
+    use_price = kwargs.pop('use_price', 'close_price')
+
     new_col = []
     col_name = str(n)+'_period_ma'
     i = 0
@@ -26,11 +29,13 @@ def add_moving_average(df, n, use_price='close_price'):
 
     return
 
-def add_RSI(df, n):
+def add_RSI(df, **kwargs):
     '''
     adds a new column to df called 'n_period_RSI' with the RSI 
     calculated over the last n data points
     '''
+    n = kwargs.pop('n', 2)
+
     new_col = []
     col_name = str(n)+'_period_RSI'
     i = 0
@@ -56,6 +61,26 @@ def add_RSI(df, n):
     df[col_name] = new_col
 
     return
+
+class Indicator():
+    def __init__(self, fn, kwargs, name=''):
+        self.name = name
+        self.fn = fn #indicator fn to apply
+        self.kwargs = kwargs #dict of kwargs to pass
+
+    def apply(self, df):
+        self.fn(df, **self.kwargs)
+
+class Moving_Average(Indicator):
+    def __init__(self, n=20, use_price='close_price'):
+        self.fn = add_moving_average
+        self.kwargs = {'n':n, 'use_price': use_price}
+
+class RSI(Indicator):
+    def __init__(self, n=2):
+        self.fn = add_RSI
+        self.kwargs = {'n':n}
+
 
 if __name__ == '__main__':
     pass

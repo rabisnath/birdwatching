@@ -16,6 +16,13 @@ columns Index(['begins_at', 'open_price', 'close_price', 'high_price', 'low_pric
       dtype='object')
 '''
 
+'''
+>>> r.account.build_holdings()
+{'FIT': {'price': '6.220000', 'quantity': '1.00000000', 'average_buy_price': '0.0000', 
+'equity': '6.22', 'percent_change': '0.00', 'equity_change': '6.220000', 'type': 'stock', 
+'name': 'Fitbit', 'id': 'fdf46795-2a81-4506-880f-514c8010c163', 'pe_ratio': None, 'percentage': '100.00'}}
+'''
+
 class Dataset:
     '''
     this class and its subclasses provide a layer of abstraction between a given dataset
@@ -32,7 +39,8 @@ class Dataset:
 
     def add_indicators(self, indicators):
         # add indicators/metrics to dataframes
-
+        for i in indicators:
+            i.apply(self.data)
         return
         
 
@@ -59,10 +67,6 @@ class Robinhood_Data(Dataset):
             'symbol': 'symbol',
         }
         self.recent_last = True
-        
-def get_RH_dset(symbol, span, note=''):
-    # span \in ['day', 'week', 'month', '3month', 'year', '5year']
-    return Robinhood_Data(pd.DataFrame(r.get_historicals(symbol, span=span)), symbol, span, note=note)
 
 class World:
     '''
@@ -76,7 +80,10 @@ class World:
         self.holdings = holdings
         self.watchlist = watchlist
         self.datasets = datasets
-        self.add_indicators(indicators)
+        #datasets is a multi-level dict with keys for symbol, span, Dataset values
+        #datasets['TSLA']['year'].data == r.get_historicals('TSLA', span='year')
+        self.indicators = indicators
+        self.add_indicators()
 
     def update(self):
         # how to update the world during backtesting
@@ -84,29 +91,56 @@ class World:
 
         return
 
-    def update_from_live(self):
+    def update_from_live(self, spans=['year']):
         # how to update the world during livetrading
-
+        self.cash = float(r.account.build_user_profile()['cash'])
+        self.holdings = r.account.build_holdings()
+        self.datasets = {symbol:{span: get_RH_dset(symbol, span) for span in spans} for symbol in self.watchlist}
+        self.add_indicators()
         return
 
     def add_indicators(self):
-        # call add_indicators method for each dataset
-
+        # call add_indicators method for each indicator on each dataset
+        for symbol, span_dict in self.datasets.items():
+            for span, dataset in span_dict.items():
+                dataset.add_indicators(self.indicators)
         return
 
-    
+def get_RH_dset(symbol, span, note=''):
+    # span \in ['day', 'week', 'month', '3month', 'year', '5year']
+    return Robinhood_Data(pd.DataFrame(r.get_historicals(symbol, span=span)), symbol, span, note=note)    
 
-def world_from_live(watchlist, spans=['year'], indicators=[]):
+def world_from_live(watchlist, **kwargs): #, spans=['year'], indicators=[], get_dset=get_RH_dset):
     '''
     creates a world object representing the current world
     '''
+    spans = kwargs.pop('spans', ['year'])
+    get_dset = kwargs.pop('get_dset', get_RH_dset)
     w = World(name='live_world_'+datetime.now().strftime("%D"), 
-            cash=float(r.account.build_user_profile()['cash']),
+            cash= kwargs.pop('cash', float(r.account.build_user_profile()['cash'])),
             holdings=r.account.build_holdings(),
             watchlist=watchlist,
-            datasets={symbol:{span: get_RH_dset(symbol, span) for span in spans} for symbol in watchlist},
-            #datasets['TSLA']['year'].data == r.get_historicals('TSLA', span='year')
-            indicators=indicators
+            datasets={symbol:{span: get_dset(symbol, span) for span in spans} for symbol in watchlist},
+            indicators=kwargs.pop('indicators', [])
     )
 
     return w
+
+
+if __name__ == '__main__':
+    
+    user = 'alex.bisnath@gmail.com'
+    pword = ''
+
+    basket = ['FB','AAPL','TSLA','NFLX']
+
+    r.login(user, pword)
+
+    from indicators import Moving_Average, RSI
+
+    w = world_from_live(basket, indicators=[Moving_Average(n=200), Moving_Average(n=10), RSI(2)])
+
+    print(w.datasets['TSLA']['year'].data['200_period_ma'])
+
+
+

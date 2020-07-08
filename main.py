@@ -4,8 +4,6 @@ import pandas as pd
 user = 'alex.bisnath@gmail.com'
 pword = ''
 
-basket = ['fb','aapl','tsla','nflx']
-
 def print_data(symbols, span):
     data = r.get_historicals(symbols, span=span)
     print("\n data for {}, {}:\n".format(str(symbols), span))
@@ -14,7 +12,11 @@ def print_data(symbols, span):
 
 if __name__ == "__main__":
     
-    r.login(user, pword)
+    r.login()
+
+    # setting watchlist
+    #basket = ['FB','AAPL','TSLA','NFLX']
+    basket = list(pd.read_csv('snp500.csv')['Symbol'].values)[:10]
     
     #holdings = r.build_holdings()
     #profile = r.load_account_profile()
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     #for k,v in profile.items():
     #    print(k, v)
 
-    #print_data(basket[0], 'day') #5min
+    #print_data(basket[0], 'day') #5min intervals
     #print_data(basket[0], 'week') #10min
     #print_data(basket[0], 'month') #1hr
     #print_data(basket[0], '3month') #1hr
@@ -39,7 +41,7 @@ if __name__ == "__main__":
     #print(r.account.build_user_profile())
 
     # --- workflow 1 ---
-
+    '''
     # getting data
     data = r.get_historicals(basket[1], span='year')
     df = pd.DataFrame(data)
@@ -48,9 +50,9 @@ if __name__ == "__main__":
     
     # adding indicators
     from indicators import add_moving_average, add_RSI
-    add_moving_average(df, 200)
-    add_moving_average(df, 10)
-    add_RSI(df, 2)
+    add_moving_average(df, n=200)
+    add_moving_average(df, n=10)
+    add_RSI(df, n=2)
 
     # creating a model
     from models import Mean_Reversion
@@ -61,18 +63,25 @@ if __name__ == "__main__":
     print(strat.buy_signal(df))
     print("\nsell signal:")
     print(strat.sell_signal(df),'\n')
+    '''
 
     # --- workflow 2 ---
 
-    # set watchlist
     # build world
+    from indicators import Moving_Average, RSI
+    from world import world_from_live
+    w = world_from_live(basket, cash=10000, indicators=[Moving_Average(n=200), Moving_Average(n=10), RSI(2)])
     # get model
+    from models import Mean_Reversion
+    mr = Mean_Reversion('Mean Reversion', 200, 10, 2)
     # build investor
+    from investor import Investor
+    investor = Investor(models=[mr], world=w, live=False)
     # livetrade with investor
+    investor.routine()
 
     # --- workflow 3 ---
 
-    # set watchlist
     # build universe
     # get model
     # build investor

@@ -8,7 +8,7 @@ class Universe:
         self.name = name
         self.rows_needed = rows_needed
         if world==None:
-            w = world_from_live(watchlist, spans=spans)
+            w = world_from_live(watchlist, spans=spans, indicators=indicators)
             self.base_world = w
             self.current_world = w
         else:
