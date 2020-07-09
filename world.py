@@ -1,6 +1,7 @@
 import pandas as pd
 import robin_stocks as r
 from datetime import datetime 
+import copy
 
 '''
 df.head               begins_at  open_price close_price  high_price   low_price    volume session  interpolated symbol  200_period_ma  10_period_ma  2_period_RSI
@@ -42,6 +43,15 @@ class Dataset:
         for i in indicators:
             i.apply(self.data)
         return
+
+    def get_subset(self, i, n_rows):
+        '''
+        returns a copy of self where self.data = self.data[i: i+nrows]
+        '''
+        new_ds = copy.deepcopy(self)
+        new_ds.data = new_ds.data[i: i+n_rows]
+        return new_ds
+
         
 
 class Robinhood_Data(Dataset):
@@ -85,14 +95,22 @@ class World:
         self.indicators = indicators
         self.add_indicators()
 
-    def update(self):
-        # how to update the world during backtesting
-        # where update = advance by one day?
+    def get_sub_datasets(self, i, n_rows):
+        # for updating the world during backtesting
 
-        return
+        #for symbol, span_dict in self.datasets.items():
+        #    for span, dataset in span_dict.items():
+        #        dataset = dataset.get_subset(i, n_rows)
+
+        #new_wrld = copy.deepcopy(self)
+        #new_wrld.datasets = {sym: {span: dataset.get_subset(i, n_rows) for span, dataset in span_dict.items()} for sym, span_dict in self.datasets.items()}
+
+        #return new_wrld
+
+        return {sym: {span: dataset.get_subset(i, n_rows) for span, dataset in span_dict.items()} for sym, span_dict in self.datasets.items()}
 
     def update_from_live(self, spans=['year']):
-        # how to update the world during livetrading
+        # for updating the world during livetrading
         self.cash = float(r.account.build_user_profile()['cash'])
         self.holdings = r.account.build_holdings()
         self.datasets = {symbol:{span: get_RH_dset(symbol, span) for span in spans} for symbol in self.watchlist}
@@ -104,6 +122,23 @@ class World:
         for symbol, span_dict in self.datasets.items():
             for span, dataset in span_dict.items():
                 dataset.add_indicators(self.indicators)
+        return
+
+    def update_holdings(self, symbol, price, quantity, mode='buy'):
+        # update holdings during backtesting
+        if symbol in self.holdings.keys():
+            if mode == 'buy':
+                self.holdings[symbol]['quantity'] += quantity
+            elif mode == 'sell':
+                self.holdings[symbol]['quantity'] -= quantity
+            self.holdings[symbol]['price'] = price
+        else:
+            if mode != 'buy':
+                raise KeyError("can't sell stock not in portfolio")
+            self.holdings[symbol] = {
+                'price': price,
+                'quantity': quantity,
+            }
         return
 
 def get_RH_dset(symbol, span, note=''):

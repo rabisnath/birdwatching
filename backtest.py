@@ -1,55 +1,81 @@
 from world import *
-
-class Universe:
-    '''
-    represents a collection of worlds to be used for a backtest
-    '''
-    def __init__(self, name, watchlist, world=None, spans=['year'], indicators=[], rows_needed=2):
-        self.name = name
-        self.rows_needed = rows_needed
-        if world==None:
-            w = world_from_live(watchlist, spans=spans, indicators=indicators)
-            self.base_world = w
-            self.current_world = w
-        else:
-            self.base_world = world
-            self.current_world = world
-        # add indicators to base_world
-        # n_worlds = how many times one can advance/update the world while meeting criteria
-    
-    #sanity check: u.base_world.datasets['fb']['year'].data <- a dataframe
-
-    def get_next_world(self):
-        '''
-        return self.current_world and update it for the next time this is called
-        update the current world using methods of the world class
-        '''
-        return
-
-    def compare(self):
-        '''
-        get summary stats of current_world vs base_world
-        '''
-        return
+import copy
+import pandas as pd
 
 class Backtest:
     '''
-    class to bundle functions for carrying out and summarizing backtests
+    tools for papertrading a model over some provided dataset
     '''
-    def __init__(self, name, investor, universe):
+    def __init__(self, name, investor, base_world):
         self.name = name
         self.investor = investor
-        self.universe = universe
-        self.universe.rows_needed = investor.get_rows_needed()
+        self.base_world = copy.deepcopy(base_world)
+        self.current_world = copy.deepcopy(base_world)
+        self.rows_needed = self.investor.get_rows_needed()
+        self.history = pd.DataFrame(columns=['time', 'cash_before_trade', 'symbol', 'quantity', 'price', 'side'])
+        self.time = 0
+        self.max_time = max([len(ds.data) for span_dict in self.base_world.datasets.values() for ds in span_dict.values()]) - self.rows_needed
 
-    def do_backtest(self, options):
+    #sanity check: b.base_world.datasets['fb']['year'].data <- a dataframe
+
+    def update(self):
         '''
-        carry out backtest
-            give investor current world from universe
-            call investor methods, update investor world to simulate trades
-            track stats
-            repeat
-            summarize stats
+        updates self.current_world, self.history based on a series of trades
         '''
+        if self.time > self.max_time: return False
+        # update self.current_world
+        self.current_world.datasets = self.base_world.get_sub_datasets(self.time, self.rows_needed)
+        self.investor.world = self.current_world
+        trades = self.investor.get_suggested_trades()
+        # update cash, holdings, history
+        for t in trades:
+            self.history.append({
+                'time': self.time,
+                'cash_before_trade': self.current_world.cash, 
+                'symbol': t['symbol'], 
+                'quantity': t['quantity'], 
+                'price': t['price'], 
+                'side': t['side'],
+            }, ignore_index=True)
+            
+            q = int(t['quantity'])
+            p = float(t['price'])
+
+            if t['side'] == 'buy':
+                self.current_world.cash -= q * p
+                self.current_world.update_holdings(t['symbol'], p, q, mode='buy')
+            if t['side'] == 'sell':
+                self.current_world.cash += q * p
+                self.current_world.update_holdings(t['symbol'], p, q, mode='sell')
+
+        self.time += 1
+        return True
+    
+    def export_history(self):
+        '''
+        save self.history to .pkl or some other format
+        '''
+        return
+
+    def summary_stats_from_history(self):
+        '''
+        how many trades?
+        how many profitable trades?
+        portfolio value at end of backtest vs beginning?
+        % return?
+        '''
+        return
+
+    def plot_results(self):
+        '''
+        make line chart of portfolio value over the backtesting period
+        '''
+        return
+
+    def do_backtest(self, **kwargs):
+        '''
+        iteratively call self.update and report results
+        '''
+
         return
         

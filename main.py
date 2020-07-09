@@ -66,7 +66,7 @@ if __name__ == "__main__":
     '''
 
     # --- workflow 2 ---
-
+    '''
     # build world
     from indicators import Moving_Average, RSI
     from world import world_from_live
@@ -79,17 +79,36 @@ if __name__ == "__main__":
     investor = Investor(models=[mr], world=w, live=False)
     # livetrade with investor
     investor.routine()
+    '''
 
     # --- workflow 3 ---
-
-    # build universe
+    
+    # build base world
+    from indicators import Moving_Average, RSI
+    from world import world_from_live
+    w = world_from_live(basket, cash=10000, indicators=[Moving_Average(n=200), Moving_Average(n=10), RSI(2)])
     # get model
+    from models import Mean_Reversion
+    mr = Mean_Reversion('Mean Reversion', 200, 10, 2)
     # build investor
-    # backtest with investor + universe
+    from investor import Investor
+    i = Investor(models=[mr], world=w, live=False)
+    # set up backtest
+    from backtest import Backtest
+    b = Backtest(name='mean_reversion_backtest_000', investor=i, base_world=w)
+    # show/export results
 
     # --- workflow 4 ---
 
-    # neural network model class
+    # neural ODE model class / some other trainable model
+    # that will allow us to good make use of the backtesting tools
+
+    # --- workflow 5 --- 
+
+    # exporting, importing model
+    # test many models against each other
+    # export best ones
+
 
 
 

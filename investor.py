@@ -9,12 +9,13 @@ class Investor_settings:
     def __init__(self, **kwargs):
         self.max_risk = kwargs.pop('max_risk', 0.10) # max % of cash to spend at once
         self.desired_risk = kwargs.pop('desired_risk', 0.05) # % of cash to spend at once
-        self.max_trades = kwargs.pop('max_trades', 1) # max # of trades per call of i.routine()
+        self.max_trades = kwargs.pop('max_trades', 3) # max # of trades per call of i.routine()
         self.order_type = kwargs.pop('order_type', 'market') # use market or limit orders
         self.use_stop = kwargs.pop('use_stop', False) # use a stop?
         self.time_in_force = kwargs.pop('time_in_force', 'gfd') # how long orders are good for
         # ‘gtc’ = good until cancelled. ‘gfd’ = good for the day. ‘ioc’ = immediate or cancel. ‘opg’ execute at opening
         self.verbosity = kwargs.pop('verbosity', 1)
+        # 0 - nothing, 1 - trades to execute, 2 - all queries
         self.name = kwargs.pop('name', 'Default Investor')
 
 class Investor:
@@ -46,7 +47,7 @@ class Investor:
         return int(self.world.holdings[symbol]['quantity'])
 
     def get_trade(self, symbol, p, side):
-        q = get_buy_quantity(p) if side=='buy' else get_sell_quantity(symbol)
+        q = self.get_buy_quantity(p) if side=='buy' else self.get_sell_quantity(symbol)
         if q == 0: return None
         kwargs = {
             'symbol': symbol,
@@ -92,34 +93,41 @@ class Investor:
                 if not m.check_input(data): continue
                 buy = m.buy_signal(data)
                 sell = m.sell_signal(data)
-                print("thinking about " + symbol + ' with model ' + m.name)
-                print("buy: " + str(buy), "sell: " + str(sell))
+                if self.settings.verbosity > 1:
+                    print("thinking about " + symbol + ' with model ' + m.name)
+                    print("buy: " + str(buy), "sell: " + str(sell))
                 if buy + sell != 1: continue
                 if self.live:
                     p = float(r.stocks.get_latest_price(symbol)[0])
                 else:
-                    p = float(data.loc[-1, 'close_price'])
+                    p = float(data['close_price'].values[-1])
                 if buy:
-                    t = get_trade(symbol, p, 'buy')
+                    t = self.get_trade(symbol, p, 'buy')
                     if t != None:
                         trades.append(t)
                 if sell and symbol in self.world.holdings.keys():
-                    t = get_trade(symbol, p, 'sell')
+                    t = self.get_trade(symbol, p, 'sell')
                     if t != None:
                         trades.append(t)
 
-        return trades
+        # consider adding extra loop to evaluate open positions
+        # and sell those that are profitable
+        # counterpoint: design models to give the sell signal at the
+        # right time
+        # frontline: model class can see data, lacks holdings info
+
+        return trades[:self.settings.max_trades]
 
     def execute_trade(self, t):
         '''
         if live, actually make the trade, else print details to console
         '''
-        if self.settings.verbosity == 1:
+        if self.settings.verbosity > 0:
             print(t['side']+'ing '+t['quantity']+' shares of '+t['symbol']+' at '+str(t['price']))
         if self.live:
             r.order(**t['kwargs'])
         else:
-            if self.settings.verbosity == 1:
+            if self.settings.verbosity > 0:
                 print("would call r.order() with these params: ", t['kwargs'])
         return
 
