@@ -20,7 +20,7 @@ class Investor_settings:
 
 class Investor:
     '''
-    the investor class takes a model, a world, some settings, and generates ideas
+    the investor class takes a list of models, a world, some settings, and generates ideas
     for concrete trades to execute
     '''
     def __init__(self, models, world, settings=Investor_settings(), live=False):
