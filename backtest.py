@@ -106,6 +106,7 @@ class Backtest:
         if self.verbosity > 0:
             for k, v in self.make_summary().items():
                 print("{}: {}".format(k, v))
+            print("Holdings at end of backtest: ", self.current_world.holdings)
 
         return
         
