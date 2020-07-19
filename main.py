@@ -97,6 +97,8 @@ if __name__ == "__main__":
     from backtest import Backtest
     b = Backtest(name='mean_reversion_backtest_000', investor=i, base_world=w)
     # show/export results
+    b.do_backtest()
+    b.export_history(path='backtests/')
 
     # --- workflow 4 ---
 

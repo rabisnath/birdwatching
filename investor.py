@@ -41,7 +41,7 @@ class Investor:
         if p > max_:
             return 0
         else:
-            return int(self.settings.desired_risk * cash)
+            return int(self.settings.desired_risk * cash / p)
 
     def get_sell_quantity(self, symbol):
         return int(self.world.holdings[symbol]['quantity'])
@@ -123,12 +123,12 @@ class Investor:
         if live, actually make the trade, else print details to console
         '''
         if self.settings.verbosity > 0:
-            print(t['side']+'ing '+t['quantity']+' shares of '+t['symbol']+' at '+str(t['price']))
+            print(t['side']+'ing '+str(t['quantity'])+' shares of '+t['symbol']+' at '+str(t['price']))
         if self.live:
             r.order(**t['kwargs'])
-        else:
-            if self.settings.verbosity > 0:
-                print("would call r.order() with these params: ", t['kwargs'])
+        #else:
+        #    if self.settings.verbosity > 0:
+        #        print("would call r.order() with these params: ", t['kwargs'])
         return
 
     def routine(self):

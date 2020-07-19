@@ -6,17 +6,24 @@ class Backtest:
     '''
     tools for papertrading a model over some provided dataset
     '''
-    def __init__(self, name, investor, base_world):
+    def __init__(self, name, investor, base_world, verbosity=1):
         self.name = name
         self.investor = investor
+        self.investor.live = False
+        self.verbosity = verbosity
+        self.investor.settings.verbosity = verbosity
         self.base_world = copy.deepcopy(base_world)
         self.current_world = copy.deepcopy(base_world)
         self.rows_needed = self.investor.get_rows_needed()
         self.history = pd.DataFrame(columns=['time', 'cash_before_trade', 'symbol', 'quantity', 'price', 'side'])
         self.time = 0
         self.max_time = max([len(ds.data) for span_dict in self.base_world.datasets.values() for ds in span_dict.values()]) - self.rows_needed
+        
 
     #sanity check: b.base_world.datasets['fb']['year'].data <- a dataframe
+
+    def set_max_time(self, t):
+        self.max_time = t
 
     def update(self):
         '''
@@ -29,7 +36,9 @@ class Backtest:
         trades = self.investor.get_suggested_trades()
         # update cash, holdings, history
         for t in trades:
-            self.history.append({
+            self.investor.execute_trade(t) # just to get a print out of the trade
+            
+            self.history = self.history.append({
                 'time': self.time,
                 'cash_before_trade': self.current_world.cash, 
                 'symbol': t['symbol'], 
@@ -37,6 +46,11 @@ class Backtest:
                 'price': t['price'], 
                 'side': t['side'],
             }, ignore_index=True)
+
+            #self.history.append(
+            #    pd.DataFrame([[self.time, self.current_world.cash, t['symbol'], t['quantity'], t['price'], t['side']]], 
+            #        columns=['time', 'cash_before_trade', 'symbol', 'quantity', 'price', 'side']),
+            #    ignore_index=True)
             
             q = int(t['quantity'])
             p = float(t['price'])
@@ -51,20 +65,31 @@ class Backtest:
         self.time += 1
         return True
     
-    def export_history(self):
+    def export_history(self, path='', mode='csv'):
         '''
-        save self.history to .pkl or some other format
+        save self.history to .csv or some other format
         '''
+        if mode == 'csv':
+            self.history.to_csv(path+self.name+'.csv')
         return
 
-    def summary_stats_from_history(self):
+    def make_summary(self):
         '''
         how many trades?
         how many profitable trades?
         portfolio value at end of backtest vs beginning?
         % return?
         '''
-        return
+        # ['time', 'cash_before_trade', 'symbol', 'quantity', 'price', 'side'])
+        #df = self.history
+
+        summary = {
+            'starting cash': self.base_world.cash,
+            'ending cash': self.current_world.cash,
+            'percent gain': 100 * (self.current_world.cash - self.base_world.cash) / self.base_world.cash,
+        }
+
+        return summary
 
     def plot_results(self):
         '''
@@ -72,10 +97,15 @@ class Backtest:
         '''
         return
 
-    def do_backtest(self, **kwargs):
+    def do_backtest(self):
         '''
         iteratively call self.update and report results
         '''
+        self.time = 0
+        while self.update(): self.time += 1
+        if self.verbosity > 0:
+            for k, v in self.make_summary().items():
+                print("{}: {}".format(k, v))
 
         return
         
